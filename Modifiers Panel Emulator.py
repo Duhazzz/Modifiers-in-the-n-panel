@@ -1,14 +1,48 @@
 bl_info = {
     "name": "Modifiers Panel Emulator (Complete)",
     "author": "ChatGPT",
-    "version": (2, 0),
+    "version": (2, 1),
     "blender": (3, 0, 0),
     "location": "View3D > N-panel > Modifiers",
-    "description": "Emulates the complete Modifiers panel from Properties inside the 3D Viewport N-panel",
+    "description": "Emulates the complete Modifiers panel from Properties inside the 3D Viewport N-panel with collapse support",
     "category": "3D View",
 }
 
 import bpy
+
+
+def get_collapse_data(obj):
+    return obj.get("_modifiers_collapsed", {})
+
+
+class OBJECT_OT_toggle_modifier_collapse(bpy.types.Operator):
+    bl_idname = "object.toggle_modifier_collapse"
+    bl_label = "Toggle Modifier Collapse"
+    bl_options = {'INTERNAL'}
+
+    modifier_name: bpy.props.StringProperty()
+
+    def invoke(self, context, event):
+        obj = context.object
+        if not obj:
+            return {'CANCELLED'}
+
+        collapsed = dict(get_collapse_data(obj))
+        current_state = collapsed.get(self.modifier_name, False)
+
+        if event.ctrl:
+            new_state = not current_state
+            for mod in obj.modifiers:
+                collapsed[mod.name] = new_state
+        elif event.shift:
+            for mod in obj.modifiers:
+                collapsed[mod.name] = False
+            collapsed[self.modifier_name] = True
+        else:
+            collapsed[self.modifier_name] = not current_state
+
+        obj["_modifiers_collapsed"] = collapsed
+        return {'FINISHED'}
 
 
 class VIEW3D_PT_modifiers_emulator(bpy.types.Panel):
@@ -25,6 +59,18 @@ class VIEW3D_PT_modifiers_emulator(bpy.types.Panel):
 
     def draw_modifier_header(self, layout, mod):
         row = layout.row(align=True)
+        
+        # Collapse toggle
+        collapsed = get_collapse_data(mod.id_data)
+        is_collapsed = collapsed.get(mod.name, False)
+        icon = 'TRIA_RIGHT' if is_collapsed else 'TRIA_DOWN'
+        collapse_op = row.operator(
+            OBJECT_OT_toggle_modifier_collapse.bl_idname,
+            text="",
+            icon=icon,
+            emboss=False
+        )
+        collapse_op.modifier_name = mod.name
         
         # Modifier name and icon
         row.label(text=mod.name, icon=f'MOD_{mod.type}')
@@ -53,6 +99,10 @@ class VIEW3D_PT_modifiers_emulator(bpy.types.Panel):
         remove.modifier = mod.name
 
     def draw_modifier_content(self, layout, mod):
+        collapsed = get_collapse_data(mod.id_data)
+        if collapsed.get(mod.name, False):
+            return
+            
         col = layout.column()
 
         # DATA_TRANSFER
@@ -236,16 +286,11 @@ class VIEW3D_PT_modifiers_emulator(bpy.types.Panel):
                 row.prop(mod, "use_bisect_flip_axis", index=1, text="Y", toggle=True)
                 row.prop(mod, "use_bisect_flip_axis", index=2, text="Z", toggle=True)
 
-
             col.prop(mod, "use_clip", text="Clipping")
             col.prop(mod, "use_mirror_merge", text="Merge")
             if mod.use_mirror_merge:
                 col.prop(mod, "merge_threshold", text="Threshold")
             col.separator()
-
-
-
-
 
         # MULTIRES
         elif mod.type == 'MULTIRES':
@@ -611,6 +656,7 @@ classes = (
     VIEW3D_PT_modifiers_emulator,
     OBJECT_OT_modifier_remove_custom,
     OBJECT_OT_modifier_move_custom,
+    OBJECT_OT_toggle_modifier_collapse,
 )
 
 
