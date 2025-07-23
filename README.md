@@ -1,4 +1,5 @@
-<img width="1451" height="895" alt="image" src="https://github.com/user-attachments/assets/1cd7362d-ec0b-42a0-9b2b-04a12b4231a6" />
+<img width="1493" height="719" alt="image" src="https://github.com/user-attachments/assets/accc44e0-9348-4472-8dc7-28d52805c2f4" />
+
 
 
 The addon adds modifiers thrown onto the object to the n-panel of the 3D viewport. 
